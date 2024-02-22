@@ -1,6 +1,5 @@
-# Creation Date: 02/20/2024
+# Creation Date: 02/22/2024
 # Creator ID: yesEngineer
-
 
 import os
 import time
@@ -9,6 +8,7 @@ import webbrowser
 import subprocess
 from colorama import init, Fore, Style
 import ctypes
+import psutil
 
 # Initialize colorama
 init()
@@ -26,28 +26,52 @@ SWP_NOSIZE = 0x0001
 SWP_SHOWWINDOW = 0x0040
 
 class Profile:
-    def __init__(self, name, paths, update_commands=None):
+    def __init__(self, name, paths, update_commands=None, start_gta=False, gta_path=None):
         self.name = name
         self.paths = paths
         self.update_commands = update_commands or []
+        self.start_gta = start_gta
+        self.gta_path = gta_path
 
     def open_profile(self):
         for path in self.paths:
             if path.startswith("http"):
                 webbrowser.open(path)
             else:
-                subprocess.Popen(path, shell=True)
+                subprocess.Popen(path, shell=True)  # Start other programs
 
     def update(self):
         for command in self.update_commands:
             subprocess.run(command, shell=True)
 
+    def start_gta_first(self):
+        if self.start_gta and self.gta_path:
+            if not self.is_gta_running():
+                subprocess.Popen(self.gta_path, shell=True)  # Start GTA V
+                print("Starting GTA V...")
+                while not self.is_gta_running():
+                    time.sleep(1)  # Check every 1 second if GTA V is running
+                print("GTA V started successfully.")
+
+    def is_gta_running(self):
+        process_name = "GTA5.exe"
+        for proc in psutil.process_iter(['pid', 'name']):
+            if proc.name() == process_name:
+                return True
+        return False
+
+
+
 def create_profile():
     print_header("Create New Profile")
     name = input("Enter profile name: ")
+    start_gta = input("Start GTA V with this profile? (y/n): ").lower() == 'y'
+    gta_path = None
+    if start_gta:
+        gta_path = input("Enter the path to GTA V shortcut (Grand Theft Auto V.url): ")
     paths = input("Enter paths to files separated by commas: ").split(',')
     update_commands = input("Enter update commands separated by commas: ").split(',')
-    profile = Profile(name, paths, update_commands)
+    profile = Profile(name, paths, update_commands, start_gta, gta_path)
     return profile
 
 def load_profiles():
@@ -57,14 +81,14 @@ def load_profiles():
             for line in f:
                 if line.strip():  # Check if line is not empty
                     profile_data = json.loads(line)
-                    profile = Profile(profile_data['name'], profile_data['paths'], profile_data.get('update_commands', []))
+                    profile = Profile(profile_data['name'], profile_data['paths'], profile_data.get('update_commands', []), profile_data.get('start_gta', False), profile_data.get('gta_path'))
                     profiles.append(profile)
     return profiles
 
 def save_profiles(profiles):
     with open(PROFILES_FILE, 'w') as f:
         for profile in profiles:
-            profile_data = {'name': profile.name, 'paths': profile.paths, 'update_commands': profile.update_commands}
+            profile_data = {'name': profile.name, 'paths': profile.paths, 'update_commands': profile.update_commands, 'start_gta': profile.start_gta, 'gta_path': profile.gta_path}
             json.dump(profile_data, f)
             f.write('\n')
 
@@ -131,10 +155,10 @@ def main():
                     profile_index = int(profile_choice)
                     if 0 < profile_index <= len(profiles):
                         profile = profiles[profile_index - 1]
+                        profile.start_gta_first()  # Start GTA V if necessary
                         print(f"Updating profile '{profile.name}'...")
                         profile.update()
                         print(f"Starting profile '{profile.name}'...")
-                        time.sleep(15)  # Delay for GTA V to start
                         profile.open_profile()
                     else:
                         print("Invalid profile number.")
