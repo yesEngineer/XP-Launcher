@@ -43,7 +43,7 @@ This will generate a single executable file named XP-Launcher.exe in the dist di
 
 ## Credits
 
-XP-Launcher was created by yesEngineer.
+XP-Launcher was created by noEngineer(yesEngineer).
 
 ## License
 
